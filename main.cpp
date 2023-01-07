@@ -1,27 +1,19 @@
-#include <iostream>
-#include <chrono>
-#include <cmath>
-#include <complex>
-#include "Palette.h"
-#include <opencv2/opencv.hpp>
+#include "Timer.h"
+#include "Mandelbrot.h"
 
 // https://github.com/bshoshany/thread-pool
 #include "BS_thread_pool.hpp"
 
-
 // Image settings
 const int MAX_ITERATIONS = 2000, IMAGES = 40, IM_WIDTH = 3840, IM_HEIGHT = 2160;
 
-int lerp(int a, int b, double t);
-RGBColor interpolate_color(RGBColor c1, RGBColor c2, double t);
-void zoom(int i);
-void point_test(int x, int y, int i);
-void print_mat(cv::Mat mat);
-RGBColor mandelbrot(std::complex<double> c);
-void plot(cv::Mat &image, int x, int y, RGBColor c);
-
 // Choose palette from Palette.h
-std::vector<RGBColor> P1 = plasma();
+std::vector<RGBColor> P1 = bright();
+
+std::complex<double> mid(-0.22815549365396181817563724969947809702434640535346752392651006864119738497484478504906341068553091449597520721798098908960188304035681997402213905544823697673245, -1.1151425080399373604907386106318819796276382139857856901977443296527567697322686573368236673401296970841349717561259777992980411457478958193154209253581064586092942919127973015681128961);
+// std::complex<double> mid(-0.743643887035763, 0.13182590421259918);
+// std::complex<double> mid(0.369299653,-0.093222884);
+// std::complex<double> mid(-0.59990625, 0.4290703125);
 
 int main(void)
 {
@@ -29,7 +21,7 @@ int main(void)
     std::cout << "Using " << std::thread::hardware_concurrency() << " hardware threads.\n";
     BS::thread_pool pool;
 
-    for (int i = 0 ; i < IMAGES; i++) {
+    for (int i = 0; i < IMAGES; i++) {
         pool.push_task(zoom, i);
     }
 
@@ -39,22 +31,18 @@ int main(void)
 }
 
 void zoom(int i) {
-    std::chrono::time_point<std::chrono::system_clock> start, end;
-    double scale = 4.5 * pow(1.01, 1-i); // 1.025
+    Timer t(i);
 
-    std::complex<double> mid(-0.743643887035763, 0.13182590421259918);
-    // std::complex<double> mid(0.369299653,-0.093222884);
-    // std::complex<double> mid(-0.22815549365396181817563724969947809702434640535346752392651006864119738497484478504906341068553091449597520721798098908960188304035681997402213905544823697673245, -1.1151425080399373604907386106318819796276382139857856901977443296527567697322686573368236673401296970841349717561259777992980411457478958193154209253581064586092942919127973015681128961);
-    // std::complex<double> mid(-0.59990625, 0.4290703125);
+    double scale = 4.5 * pow(1.025, 1-i);
+    int x, y;
+    RGBColor col;
 
     cv::String filename = cv::format("./img/zoom%d.png", i);
 
     // Create black canvas
     cv::Mat image (IM_HEIGHT, IM_WIDTH, CV_8UC3, cv::Scalar(0, 0, 0));
 
-    RGBColor col;
-    int x, y;
-    start = std::chrono::system_clock::now();
+    // start = std::chrono::system_clock::now();
     for (x = 0; x < IM_WIDTH; x++) {
         for (y = 0; y < IM_HEIGHT; y++) {
 
@@ -67,10 +55,6 @@ void zoom(int i) {
             plot(image, x, y, col);
         }
     }
-
-    end = std::chrono::system_clock::now();
-    std::chrono::duration<double> t = end - start;
-    std::cout << "Zoom " << i << " done in " << t.count() << " seconds\n";
 
     cv::imwrite(filename, image);
 }
